@@ -1,0 +1,30 @@
+# ============================================================
+# NutriEM Backend - Configuration Template
+# Copy this file to application.properties and fill in values
+# NEVER commit application.properties to git
+# ============================================================
+server.port=8080
+spring.application.name=nutriEM-backend
+
+spring.datasource.url=jdbc:mysql://localhost:3306/nutriem_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=YOUR_MYSQL_PASSWORD_HERE
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+app.jwt.secret=change_this_to_a_secure_random_string
+app.jwt.expiration-ms=86400000
+
+app.cors.allowed-origins=http://localhost:3000,http://localhost:5173
+
+anthropic.api.key=YOUR_CLAUDE_API_KEY_HERE
+anthropic.api.url=https://api.anthropic.com/v1/messages
+anthropic.api.model=claude-sonnet-4-20250514
+anthropic.api.max-tokens=8000
+
+logging.level.com.nutriem=DEBUG
+logging.level.org.springframework.security=INFO
