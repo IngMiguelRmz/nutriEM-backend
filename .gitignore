@@ -1,0 +1,12 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+src/main/resources/application-prod.properties
+src/main/resources/application-local.properties
