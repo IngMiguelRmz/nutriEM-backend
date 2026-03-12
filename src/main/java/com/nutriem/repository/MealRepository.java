@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface MealRepository extends JpaRepository<Meal, Long> {
 
-    @Query("SELECT m FROM Meal m WHERE m.dietPlan.id = :planId ORDER BY m.dayOfWeek ASC, m.mealType ASC")
+    @Query("SELECT DISTINCT m FROM Meal m LEFT JOIN FETCH m.mealFoods WHERE m.dietPlan.id = :planId ORDER BY m.dayOfWeek ASC, m.mealType ASC")
     List<Meal> findByDietPlanId(@Param("planId") Long dietPlanId);
 
     @Query("SELECT m FROM Meal m WHERE m.id = :id AND m.dietPlan.id = :planId")

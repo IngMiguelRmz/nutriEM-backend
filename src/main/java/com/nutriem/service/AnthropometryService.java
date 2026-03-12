@@ -139,6 +139,9 @@ public class AnthropometryService {
 
         // Somatotype (requires skinfolds + perimeters + diameters + height + weight)
         calcSomatotype(a, height, weight);
+
+        // WHR / WHtR
+        calcWhr(a, gender, height);
     }
 
     // ── Body Fat % ────────────────────────────────────────────
@@ -357,4 +360,47 @@ public class AnthropometryService {
     private double round2(double val) {
         return Math.round(val * 100.0) / 100.0;
     }
+
+    // ── WHR / WHtR ────────────────────────────────────────────
+    private void calcWhr(Anthropometry a, com.nutriem.model.Patient.Gender gender, Double heightCm) {
+        Double waist = a.getPerimeterWaist();
+        Double hip   = a.getPerimeterHip();
+        boolean male = gender == com.nutriem.model.Patient.Gender.MALE;
+
+        // Waist-to-Hip Ratio
+        if (waist != null && hip != null && hip > 0) {
+            double whr = round2(waist / hip);
+            a.setWhrRatio(whr);
+
+            // WHO risk classification
+            String risk;
+            if (male) {
+                if      (whr < 0.90) risk = "Low";
+                else if (whr < 0.95) risk = "Moderate";
+                else if (whr < 1.00) risk = "High";
+                else                 risk = "Very High";
+            } else {
+                if      (whr < 0.80) risk = "Low";
+                else if (whr < 0.85) risk = "Moderate";
+                else if (whr < 0.90) risk = "High";
+                else                 risk = "Very High";
+            }
+            a.setWhrRisk(risk);
+        }
+
+        // Waist-to-Height Ratio
+        if (waist != null && heightCm != null && heightCm > 0) {
+            double wht = round2(waist / heightCm);
+            a.setWhtRatio(wht);
+
+            // Ashwell & Hsieh boundary-based classification
+            String risk;
+            if      (wht < 0.40) risk = "Slim";
+            else if (wht < 0.50) risk = "Healthy";
+            else if (wht < 0.60) risk = "Overweight";
+            else                 risk = "Very High";
+            a.setWhtRisk(risk);
+        }
+    }
+
 }

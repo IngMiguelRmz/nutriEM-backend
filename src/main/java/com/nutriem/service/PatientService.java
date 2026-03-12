@@ -76,6 +76,18 @@ public class PatientService {
 
         Patient saved = patientRepository.save(patient);
         log.info("Patient created: {} by {}", saved.getFullName(), nutriologist.getEmail());
+
+        // Auto-create first measurement from registration data
+        if (req.getWeightKg() != null || req.getHeightCm() != null) {
+            PatientMeasurement m = new PatientMeasurement();
+            m.setPatient(saved);
+            m.setWeightKg(req.getWeightKg());
+            m.setHeightCm(req.getHeightCm());
+            m.setMeasuredAt(java.time.LocalDate.now());
+            m.setNotes("Initial measurement from patient registration");
+            measurementRepository.save(m);
+        }
+
         return PatientResponse.from(saved);
     }
 

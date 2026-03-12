@@ -13,15 +13,29 @@ public class MealFood {
     @JoinColumn(name = "meal_id", nullable = false)
     private Meal meal;
 
+    // Optional link to Food database — nullable so AI-generated
+    // ingredients can be saved without a matching Food record
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "food_id", nullable = false)
+    @JoinColumn(name = "food_id", nullable = true)
     private Food food;
 
-    @Column(nullable = false) private Double quantityGrams;
-    private String servingDescription;
-    private Double calories, proteinG, carbsG, fatG, fiberG;
+    // Inline ingredient name (used when food_id is null)
+    private String ingredientName;
 
-    @Column(columnDefinition = "TEXT") private String notes;
+    @Column(nullable = false)
+    private Double quantityGrams;
+
+    private String servingDescription;
+
+    // Nutrition values for this quantity
+    private Double calories;
+    private Double proteinG;
+    private Double carbsG;
+    private Double fatG;
+    private Double fiberG;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     public MealFood() {}
 
@@ -35,12 +49,19 @@ public class MealFood {
         this.fiberG   = food.getFiberPer100g()    != null ? food.getFiberPer100g()    * r : null;
     }
 
+    // Display name — prefer Food name if linked, else inline name
+    public String getDisplayName() {
+        return food != null ? food.getName() : ingredientName;
+    }
+
     public Long getId()                         { return id; }
     public void setId(Long v)                   { this.id = v; }
     public Meal getMeal()                       { return meal; }
     public void setMeal(Meal v)                 { this.meal = v; }
     public Food getFood()                       { return food; }
     public void setFood(Food v)                 { this.food = v; }
+    public String getIngredientName()           { return ingredientName; }
+    public void setIngredientName(String v)     { this.ingredientName = v; }
     public Double getQuantityGrams()            { return quantityGrams; }
     public void setQuantityGrams(Double v)      { this.quantityGrams = v; }
     public String getServingDescription()       { return servingDescription; }

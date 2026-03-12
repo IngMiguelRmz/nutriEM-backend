@@ -29,6 +29,10 @@ public class AnthropometryResponse {
     // Perímetros
     private Double perimeterWaist;
     private Double perimeterHip;
+    private Double whrRatio;
+    private String whrRisk;
+    private Double whtRatio;
+    private String whtRisk;
     private Double perimeterNeck;
     private Double perimeterArm;
     private Double perimeterForearm;
@@ -93,6 +97,10 @@ public class AnthropometryResponse {
         r.skinfoldAxillary      = a.getSkinfoldAxillary();
         r.perimeterWaist        = a.getPerimeterWaist();
         r.perimeterHip          = a.getPerimeterHip();
+        r.whrRatio              = a.getWhrRatio();
+        r.whrRisk               = a.getWhrRisk();
+        r.whtRatio              = a.getWhtRatio();
+        r.whtRisk               = a.getWhtRisk();
         r.perimeterNeck         = a.getPerimeterNeck();
         r.perimeterArm          = a.getPerimeterArm();
         r.perimeterForearm      = a.getPerimeterForearm();
@@ -180,4 +188,9 @@ public class AnthropometryResponse {
     public Anthropometry.SkinfoldMethod getSkinfoldMethod() { return skinfoldMethod; }
     public String getNotes() { return notes; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public Double getWhrRatio()  { return whrRatio; }
+    public String getWhrRisk()   { return whrRisk; }
+    public Double getWhtRatio()  { return whtRatio; }
+    public String getWhtRisk()   { return whtRisk; }
 }

@@ -82,6 +82,13 @@ public class Anthropometry {
     private Double somatotypeX;          // X axis for somatochart
     private Double somatotypeY;          // Y axis for somatochart
 
+    // ── WHR / WHtR ────────────────────────────────────────────
+    private Double whrRatio;             // Waist-to-Hip Ratio
+    private String whrRisk;             // Low / Moderate / High / Very High
+    private Double whtRatio;            // Waist-to-Height Ratio
+    private String whtRisk;             // Slim / Healthy / Overweight / Very High
+
+
     // ── Método usado ──────────────────────────────────────────
     @Enumerated(EnumType.STRING)
     private SkinfoldMethod skinfoldMethod;
@@ -199,4 +206,13 @@ public class Anthropometry {
     public String getNotes() { return notes; }
     public void setNotes(String v) { this.notes = v; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public Double getWhrRatio()  { return whrRatio; }
+    public void   setWhrRatio(Double v)  { this.whrRatio = v; }
+    public String getWhrRisk()   { return whrRisk; }
+    public void   setWhrRisk(String v)   { this.whrRisk = v; }
+    public Double getWhtRatio()  { return whtRatio; }
+    public void   setWhtRatio(Double v)  { this.whtRatio = v; }
+    public String getWhtRisk()   { return whtRisk; }
+    public void   setWhtRisk(String v)   { this.whtRisk = v; }
 }

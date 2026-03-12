@@ -1,20 +1,24 @@
 package com.nutriem.service;
 
 import com.nutriem.dto.request.DietPlanRequest;
-import com.nutriem.dto.request.IngredientRequest;
 import com.nutriem.dto.request.MealRequest;
 import com.nutriem.dto.response.DietPlanResponse;
 import com.nutriem.dto.response.MealResponse;
 import com.nutriem.exception.ResourceNotFoundException;
-import com.nutriem.model.*;
-import com.nutriem.repository.*;
+import com.nutriem.model.DietPlan;
+import com.nutriem.model.Meal;
+import com.nutriem.model.Patient;
+import com.nutriem.model.User;
+import com.nutriem.repository.DietPlanRepository;
+import com.nutriem.repository.MealRepository;
+import com.nutriem.repository.PatientRepository;
+import com.nutriem.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,25 +29,20 @@ public class DietPlanService {
 
     private final DietPlanRepository dietPlanRepository;
     private final MealRepository     mealRepository;
-    private final MealFoodRepository mealFoodRepository;
-    private final FoodRepository     foodRepository;
     private final PatientRepository  patientRepository;
     private final UserRepository     userRepository;
 
     public DietPlanService(DietPlanRepository dietPlanRepository,
                            MealRepository mealRepository,
-                           MealFoodRepository mealFoodRepository,
-                           FoodRepository foodRepository,
                            PatientRepository patientRepository,
                            UserRepository userRepository) {
         this.dietPlanRepository = dietPlanRepository;
         this.mealRepository     = mealRepository;
-        this.mealFoodRepository = mealFoodRepository;
-        this.foodRepository     = foodRepository;
         this.patientRepository  = patientRepository;
         this.userRepository     = userRepository;
     }
 
+    // ── Current user ──────────────────────────────────────────
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -76,12 +75,11 @@ public class DietPlanService {
 
         if (req.getGenerationSource() != null) {
             try {
-                plan.setGenerationSource(DietPlan.GenerationSource.valueOf(req.getGenerationSource().toUpperCase()));
+                plan.setGenerationSource(
+                        DietPlan.GenerationSource.valueOf(req.getGenerationSource().toUpperCase()));
             } catch (IllegalArgumentException e) {
                 plan.setGenerationSource(DietPlan.GenerationSource.MANUAL);
             }
-        } else {
-            plan.setGenerationSource(DietPlan.GenerationSource.MANUAL);
         }
 
         DietPlan saved = dietPlanRepository.save(plan);
@@ -93,21 +91,29 @@ public class DietPlanService {
     @Transactional(readOnly = true)
     public List<DietPlanResponse> getDietPlansByPatient(Long patientId) {
         User nutriologist = getCurrentUser();
+
         patientRepository.findByIdAndNutritionistId(patientId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient", patientId));
+
         return dietPlanRepository.findAllByPatientId(patientId)
-                .stream().map(DietPlanResponse::from).collect(Collectors.toList());
+                .stream()
+                .map(DietPlanResponse::from)
+                .collect(Collectors.toList());
     }
 
     // ── GET SINGLE PLAN WITH MEALS ────────────────────────────
     @Transactional(readOnly = true)
     public DietPlanResponse getDietPlanById(Long planId) {
         User nutriologist = getCurrentUser();
+
         DietPlan plan = dietPlanRepository
                 .findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
+
+        // Load meals explicitly to avoid lazy loading issues
         List<Meal> meals = mealRepository.findByDietPlanId(planId);
         plan.setMeals(meals);
+
         return DietPlanResponse.withMeals(plan);
     }
 
@@ -115,6 +121,7 @@ public class DietPlanService {
     @Transactional
     public DietPlanResponse updateDietPlan(Long planId, DietPlanRequest req) {
         User nutriologist = getCurrentUser();
+
         DietPlan plan = dietPlanRepository
                 .findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
@@ -130,24 +137,30 @@ public class DietPlanService {
         plan.setTargetFiberG(req.getTargetFiberG());
         plan.setAiNotes(req.getAiNotes());
 
-        return DietPlanResponse.from(dietPlanRepository.save(plan));
+        DietPlan updated = dietPlanRepository.save(plan);
+        log.info("Diet plan updated: {}", updated.getName());
+        return DietPlanResponse.from(updated);
     }
 
-    // ── ARCHIVE PLAN ──────────────────────────────────────────
+    // ── ARCHIVE PLAN (soft delete) ────────────────────────────
     @Transactional
     public void archiveDietPlan(Long planId) {
         User nutriologist = getCurrentUser();
+
         DietPlan plan = dietPlanRepository
                 .findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
+
         plan.setStatus(DietPlan.Status.ARCHIVED);
         dietPlanRepository.save(plan);
+        log.info("Diet plan archived: {}", plan.getName());
     }
 
-    // ── ADD MEAL WITH INGREDIENTS ─────────────────────────────
+    // ── ADD MEAL TO PLAN ──────────────────────────────────────
     @Transactional
     public MealResponse addMeal(Long planId, MealRequest req) {
         User nutriologist = getCurrentUser();
+
         DietPlan plan = dietPlanRepository
                 .findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
@@ -158,89 +171,51 @@ public class DietPlanService {
         meal.setDayOfWeek(req.getDayOfWeek());
         meal.setInstructions(req.getInstructions());
         meal.setNotes(req.getNotes());
+        meal.setTotalCalories(req.getTotalCalories());
+        meal.setTotalProteinG(req.getTotalProteinG());
+        meal.setTotalCarbsG(req.getTotalCarbsG());
+        meal.setTotalFatG(req.getTotalFatG());
+        meal.setTotalFiberG(req.getTotalFiberG());
 
         if (req.getMealType() != null) {
-            try { meal.setMealType(Meal.MealType.valueOf(req.getMealType().toUpperCase())); }
-            catch (IllegalArgumentException e) { meal.setMealType(Meal.MealType.BREAKFAST); }
-        }
-
-        // If ingredients provided, compute totals from them; otherwise use explicit totals
-        if (req.getIngredients() != null && !req.getIngredients().isEmpty()) {
-            double kcal = 0, prot = 0, carbs = 0, fat = 0, fiber = 0;
-            for (IngredientRequest ing : req.getIngredients()) {
-                if (ing.getCalories()  != null) kcal  += ing.getCalories();
-                if (ing.getProteinG()  != null) prot  += ing.getProteinG();
-                if (ing.getCarbsG()    != null) carbs += ing.getCarbsG();
-                if (ing.getFatG()      != null) fat   += ing.getFatG();
-                if (ing.getFiberG()    != null) fiber += ing.getFiberG();
-            }
-            meal.setTotalCalories((int) Math.round(kcal));
-            meal.setTotalProteinG(Math.round(prot  * 10.0) / 10.0);
-            meal.setTotalCarbsG(  Math.round(carbs * 10.0) / 10.0);
-            meal.setTotalFatG(    Math.round(fat   * 10.0) / 10.0);
-            meal.setTotalFiberG(  Math.round(fiber * 10.0) / 10.0);
-        } else {
-            meal.setTotalCalories(req.getTotalCalories());
-            meal.setTotalProteinG(req.getTotalProteinG());
-            meal.setTotalCarbsG(req.getTotalCarbsG());
-            meal.setTotalFatG(req.getTotalFatG());
-            meal.setTotalFiberG(req.getTotalFiberG());
-        }
-
-        Meal savedMeal = mealRepository.save(meal);
-
-        // Save ingredients
-        List<MealFood> savedIngredients = new ArrayList<>();
-        if (req.getIngredients() != null) {
-            for (IngredientRequest ing : req.getIngredients()) {
-                MealFood mf = new MealFood();
-                mf.setMeal(savedMeal);
-                mf.setQuantityGrams(ing.getQuantityGrams() != null ? ing.getQuantityGrams() : 100.0);
-                mf.setServingDescription(ing.getServingDescription());
-                mf.setCalories(ing.getCalories());
-                mf.setProteinG(ing.getProteinG());
-                mf.setCarbsG(ing.getCarbsG());
-                mf.setFatG(ing.getFatG());
-                mf.setFiberG(ing.getFiberG());
-
-                if (ing.getFoodId() != null) {
-                    // Linked to food database
-                    foodRepository.findById(ing.getFoodId()).ifPresent(food -> {
-                        mf.setFood(food);
-                        // Calculate nutrition from food DB if not provided
-                        if (mf.getCalories() == null) mf.calculateNutrition();
-                    });
-                } else {
-                    mf.setIngredientName(ing.getIngredientName());
-                }
-                savedIngredients.add(mealFoodRepository.save(mf));
+            try {
+                meal.setMealType(Meal.MealType.valueOf(req.getMealType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                meal.setMealType(Meal.MealType.BREAKFAST);
             }
         }
 
-        savedMeal.setMealFoods(savedIngredients);
-        log.info("Meal '{}' added to plan '{}' with {} ingredients",
-                savedMeal.getName(), plan.getName(), savedIngredients.size());
-        return MealResponse.from(savedMeal);
+        Meal saved = mealRepository.save(meal);
+        log.info("Meal '{}' added to plan: {}", saved.getName(), plan.getName());
+        return MealResponse.from(saved);
     }
 
     // ── GET MEALS FOR PLAN ────────────────────────────────────
     @Transactional(readOnly = true)
     public List<MealResponse> getMeals(Long planId) {
         User nutriologist = getCurrentUser();
+
         dietPlanRepository.findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
-        return mealRepository.findByDietPlanId(planId).stream()
-                .map(MealResponse::from).collect(Collectors.toList());
+
+        return mealRepository.findByDietPlanId(planId)
+                .stream()
+                .map(MealResponse::from)
+                .collect(Collectors.toList());
     }
 
     // ── DELETE MEAL ───────────────────────────────────────────
     @Transactional
     public void deleteMeal(Long planId, Long mealId) {
         User nutriologist = getCurrentUser();
+
         dietPlanRepository.findByIdAndNutritionistId(planId, nutriologist.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("DietPlan", planId));
+
         Meal meal = mealRepository.findByIdAndDietPlanId(mealId, planId)
                 .orElseThrow(() -> new ResourceNotFoundException("Meal", mealId));
+
         mealRepository.delete(meal);
+        log.info("Meal deleted: {}", meal.getName());
     }
 }

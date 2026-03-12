@@ -20,29 +20,22 @@ public class ClaudeAiService {
 
     private static final Logger log = LoggerFactory.getLogger(ClaudeAiService.class);
 
-    private final HttpClient       httpClient;
-    private final AnthropicConfig  config;
-    private final ObjectMapper     objectMapper;
+    private final HttpClient      httpClient;
+    private final AnthropicConfig config;
+    private final ObjectMapper    objectMapper;
 
-    public ClaudeAiService(HttpClient httpClient,
-                           AnthropicConfig config,
-                           ObjectMapper objectMapper) {
+    public ClaudeAiService(HttpClient httpClient, AnthropicConfig config, ObjectMapper objectMapper) {
         this.httpClient   = httpClient;
         this.config       = config;
         this.objectMapper = objectMapper;
     }
 
-    // ── Main entry point ──────────────────────────────────────
-    public JsonNode generateDietPlan(Patient patient,
-                                     int days,
-                                     Integer targetCalories,
-                                     String customInstructions) {
+    public JsonNode generateDietPlan(Patient patient, int days, Integer targetCalories, String customInstructions) {
         String prompt = buildPrompt(patient, days, targetCalories, customInstructions);
         String rawResponse = callClaude(prompt);
         return parseJsonFromResponse(rawResponse);
     }
 
-    // ── Build the clinical prompt ─────────────────────────────
     private String buildPrompt(Patient patient, int days, Integer targetCalories, String customInstructions) {
         StringBuilder sb = new StringBuilder();
 
@@ -92,35 +85,49 @@ public class ClaudeAiService {
 
         sb.append("## REQUIRED JSON FORMAT\n");
         sb.append("{\n");
-        sb.append("  \"planName\": \"string - descriptive plan name\",\n");
+        sb.append("  \"planName\": \"string\",\n");
         sb.append("  \"planDescription\": \"string - brief clinical rationale\",\n");
         sb.append("  \"targetCalories\": number,\n");
         sb.append("  \"targetProteinG\": number,\n");
         sb.append("  \"targetCarbsG\": number,\n");
         sb.append("  \"targetFatG\": number,\n");
         sb.append("  \"targetFiberG\": number,\n");
-        sb.append("  \"aiNotes\": \"string - important clinical notes and recommendations\",\n");
+        sb.append("  \"aiNotes\": \"string - important clinical notes\",\n");
         sb.append("  \"meals\": [\n");
         sb.append("    {\n");
-        sb.append("      \"name\": \"string - meal name\",\n");
+        sb.append("      \"name\": \"string - meal name (e.g. Oatmeal with Berries)\",\n");
         sb.append("      \"mealType\": \"BREAKFAST|MORNING_SNACK|LUNCH|AFTERNOON_SNACK|DINNER|EVENING_SNACK\",\n");
         sb.append("      \"dayOfWeek\": number (1=Monday to ").append(days).append("),\n");
-        sb.append("      \"instructions\": \"string - foods and preparation details\",\n");
+        sb.append("      \"instructions\": \"string - brief preparation instructions\",\n");
         sb.append("      \"totalCalories\": number,\n");
         sb.append("      \"totalProteinG\": number,\n");
         sb.append("      \"totalCarbsG\": number,\n");
         sb.append("      \"totalFatG\": number,\n");
-        sb.append("      \"totalFiberG\": number\n");
+        sb.append("      \"totalFiberG\": number,\n");
+        sb.append("      \"ingredients\": [\n");
+        sb.append("        {\n");
+        sb.append("          \"name\": \"string - ingredient name (e.g. Rolled oats)\",\n");
+        sb.append("          \"quantityGrams\": number,\n");
+        sb.append("          \"servingDescription\": \"string - human-readable amount (e.g. 1/2 cup, 80g)\",\n");
+        sb.append("          \"calories\": number,\n");
+        sb.append("          \"proteinG\": number,\n");
+        sb.append("          \"carbsG\": number,\n");
+        sb.append("          \"fatG\": number,\n");
+        sb.append("          \"fiberG\": number\n");
+        sb.append("        }\n");
+        sb.append("      ]\n");
         sb.append("    }\n");
         sb.append("  ]\n");
         sb.append("}\n\n");
-        sb.append("Include at least 3 meals per day (BREAKFAST, LUNCH, DINNER) plus snacks if appropriate. ");
-        sb.append("Ensure nutritional values are clinically accurate and appropriate for the patient's conditions.");
+        sb.append("CRITICAL RULES:\n");
+        sb.append("- Every meal MUST have an ingredients array with at least 2 items\n");
+        sb.append("- Nutrition values per ingredient must be accurate and sum to the meal totals\n");
+        sb.append("- Include at least 3 meals per day (BREAKFAST, LUNCH, DINNER) plus snacks if clinically appropriate\n");
+        sb.append("- Ensure all values are appropriate for the patient's conditions and goals");
 
         return sb.toString();
     }
 
-    // ── Call Claude API ───────────────────────────────────────
     private String callClaude(String prompt) {
         try {
             String requestBody = objectMapper.writeValueAsString(
@@ -152,7 +159,6 @@ public class ClaudeAiService {
                 throw new RuntimeException("Claude API error: " + response.statusCode() + " - " + response.body());
             }
 
-            // Extract text from Claude response
             JsonNode root = objectMapper.readTree(response.body());
             String text = root.path("content").get(0).path("text").asText();
             log.info("Claude API response received successfully");
@@ -166,10 +172,8 @@ public class ClaudeAiService {
         }
     }
 
-    // ── Parse JSON from Claude response ──────────────────────
     private JsonNode parseJsonFromResponse(String rawText) {
         try {
-            // Claude sometimes wraps JSON in ```json ... ``` blocks — strip them
             String cleaned = rawText.trim();
             if (cleaned.startsWith("```")) {
                 cleaned = cleaned.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "").trim();
