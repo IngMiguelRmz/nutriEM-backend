@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "meals")
@@ -32,7 +32,7 @@ public class Meal {
     private Double totalProteinG, totalCarbsG, totalFatG, totalFiberG;
 
     @OneToMany(mappedBy = "meal", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<MealFood> mealFoods = new ArrayList<>();
+    private Set<MealFood> mealFoods = new HashSet<>();
 
     @CreationTimestamp @Column(updatable = false) private LocalDateTime createdAt;
 
@@ -62,8 +62,8 @@ public class Meal {
     public void setTotalFatG(Double v)          { this.totalFatG = v; }
     public Double getTotalFiberG()              { return totalFiberG; }
     public void setTotalFiberG(Double v)        { this.totalFiberG = v; }
-    public List<MealFood> getMealFoods()        { return mealFoods; }
-    public void setMealFoods(List<MealFood> v)  { this.mealFoods = v; }
+    public Set<MealFood> getMealFoods()        { return mealFoods; }
+    public void setMealFoods(Set<MealFood> v)  { this.mealFoods = v; }
     public LocalDateTime getCreatedAt()         { return createdAt; }
 
     public enum MealType {

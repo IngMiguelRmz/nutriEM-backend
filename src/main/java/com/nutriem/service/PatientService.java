@@ -19,11 +19,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,13 +36,16 @@ public class PatientService {
     private final PatientRepository            patientRepository;
     private final PatientMeasurementRepository measurementRepository;
     private final UserRepository               userRepository;
+    private final PasswordEncoder              passwordEncoder;
 
     public PatientService(PatientRepository patientRepository,
                           PatientMeasurementRepository measurementRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          PasswordEncoder passwordEncoder) {
         this.patientRepository    = patientRepository;
         this.measurementRepository = measurementRepository;
         this.userRepository        = userRepository;
+        this.passwordEncoder       = passwordEncoder;
     }
 
     // ── Get current logged-in user ────────────────────────────
@@ -201,6 +206,35 @@ public class PatientService {
                 .stream()
                 .map(MeasurementResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    // ── Portal password management ───────────────────────────
+    @Transactional
+    public Map<String,String> setPortalPassword(Long patientId, String plainPassword) {
+        User nutritionist = getCurrentUser();
+        Patient patient = patientRepository.findByIdAndNutritionistId(patientId, nutritionist.getId())
+                .orElseThrow(() -> new com.nutriem.exception.ResourceNotFoundException("Patient", patientId));
+        patient.setPortalPassword(passwordEncoder.encode(plainPassword));
+        patientRepository.save(patient);
+        return java.util.Map.of("message", "Portal password set successfully",
+                                "email", patient.getEmail() != null ? patient.getEmail() : "");
+    }
+
+    @Transactional
+    public Map<String,String> disablePortal(Long patientId) {
+        User nutritionist = getCurrentUser();
+        Patient patient = patientRepository.findByIdAndNutritionistId(patientId, nutritionist.getId())
+                .orElseThrow(() -> new com.nutriem.exception.ResourceNotFoundException("Patient", patientId));
+        patient.setPortalPassword(null);
+        patientRepository.save(patient);
+        return java.util.Map.of("message", "Portal access disabled");
+    }
+
+    public boolean isPortalEnabled(Long patientId) {
+        User nutritionist = getCurrentUser();
+        Patient patient = patientRepository.findByIdAndNutritionistId(patientId, nutritionist.getId())
+                .orElseThrow(() -> new com.nutriem.exception.ResourceNotFoundException("Patient", patientId));
+        return patient.getPortalPassword() != null;
     }
 
     // ── Helpers ───────────────────────────────────────────────

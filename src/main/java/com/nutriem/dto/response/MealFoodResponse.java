@@ -8,6 +8,7 @@ public class MealFoodResponse {
 
     private Long   id;
     private String ingredientName;
+    private String imageUrl;
     private Double quantityGrams;
     private String servingDescription;
     private Double calories;
@@ -22,6 +23,7 @@ public class MealFoodResponse {
         MealFoodResponse r = new MealFoodResponse();
         r.id                 = mf.getId();
         r.ingredientName     = mf.getDisplayName();
+        r.imageUrl           = mf.getImageUrl();
         r.quantityGrams      = mf.getQuantityGrams();
         r.servingDescription = mf.getServingDescription();
         r.calories           = mf.getCalories();
@@ -34,6 +36,7 @@ public class MealFoodResponse {
 
     public Long   getId()                         { return id; }
     public String getIngredientName()             { return ingredientName; }
+    public String getImageUrl()                   { return imageUrl; }
     public Double getQuantityGrams()              { return quantityGrams; }
     public String getServingDescription()         { return servingDescription; }
     public Double getCalories()                   { return calories; }

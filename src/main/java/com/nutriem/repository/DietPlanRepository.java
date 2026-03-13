@@ -16,6 +16,15 @@ public interface DietPlanRepository extends JpaRepository<DietPlan, Long> {
     @Query("SELECT d FROM DietPlan d WHERE d.patient.id = :patientId ORDER BY d.createdAt DESC")
     List<DietPlan> findAllByPatientId(@Param("patientId") Long patientId);
 
+    // mealFoods is now a Set so multiple bag fetch is no longer an issue
+    @Query("SELECT DISTINCT d FROM DietPlan d " +
+           "LEFT JOIN FETCH d.meals m " +
+           "LEFT JOIN FETCH m.mealFoods mf " +
+           "LEFT JOIN FETCH mf.food " +
+           "WHERE d.patient.id = :patientId " +
+           "ORDER BY d.createdAt DESC")
+    List<DietPlan> findAllByPatientIdWithMeals(@Param("patientId") Long patientId);
+
     @Query("SELECT d FROM DietPlan d WHERE d.patient.id = :patientId AND d.status = :status")
     List<DietPlan> findAllByPatientIdAndStatus(@Param("patientId") Long patientId,
                                                @Param("status") DietPlan.Status status);

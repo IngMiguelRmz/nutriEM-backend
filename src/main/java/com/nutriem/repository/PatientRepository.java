@@ -18,7 +18,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     @Query("SELECT p FROM Patient p WHERE p.nutriologist.id = :nid ORDER BY p.createdAt DESC")
     Page<Patient> findAllByNutritionistId(@Param("nid") Long nutriologistId, Pageable pageable);
 
-    @Query("SELECT p FROM Patient p WHERE p.nutriologist.id = :nid AND p.id = :id")
+    Optional<Patient> findByEmail(String email);
+
+    @Query("SELECT p FROM Patient p WHERE p.id = :id AND p.nutriologist.id = :nid")
     Optional<Patient> findByIdAndNutritionistId(@Param("id") Long id, @Param("nid") Long nutriologistId);
 
     @Query("SELECT p FROM Patient p WHERE p.nutriologist.id = :nid AND " +

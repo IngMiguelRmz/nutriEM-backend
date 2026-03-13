@@ -37,6 +37,8 @@ public class MealFood {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    private String imageUrl;
+
     public MealFood() {}
 
     public void calculateNutrition() {
@@ -78,4 +80,6 @@ public class MealFood {
     public void setFiberG(Double v)             { this.fiberG = v; }
     public String getNotes()                    { return notes; }
     public void setNotes(String v)              { this.notes = v; }
+    public String getImageUrl()                 { return imageUrl; }
+    public void setImageUrl(String v)           { this.imageUrl = v; }
 }

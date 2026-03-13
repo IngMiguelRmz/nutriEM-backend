@@ -3,6 +3,7 @@ package com.nutriem.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriem.config.AnthropicConfig;
+import com.nutriem.model.ClinicalHistory;
 import com.nutriem.model.Patient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,13 +31,13 @@ public class ClaudeAiService {
         this.objectMapper = objectMapper;
     }
 
-    public JsonNode generateDietPlan(Patient patient, int days, Integer targetCalories, String customInstructions) {
-        String prompt = buildPrompt(patient, days, targetCalories, customInstructions);
+    public JsonNode generateDietPlan(Patient patient, ClinicalHistory history, int days, Integer targetCalories, String customInstructions) {
+        String prompt = buildPrompt(patient, history, days, targetCalories, customInstructions);
         String rawResponse = callClaude(prompt);
         return parseJsonFromResponse(rawResponse);
     }
 
-    private String buildPrompt(Patient patient, int days, Integer targetCalories, String customInstructions) {
+    private String buildPrompt(Patient patient, ClinicalHistory history, int days, Integer targetCalories, String customInstructions) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("You are a clinical nutritionist AI assistant. Generate a detailed, medically appropriate ");
@@ -73,6 +74,93 @@ public class ClaudeAiService {
 
         if (targetCalories != null)
             sb.append("Target Calories: ").append(targetCalories).append(" kcal/day\n");
+
+        // ── Clinical History ──────────────────────────────────────
+        if (history != null) {
+            sb.append("\n## CLINICAL HISTORY\n");
+
+            if (history.getChronicDiseases() != null && !history.getChronicDiseases().isBlank())
+                sb.append("Chronic Diseases: ").append(history.getChronicDiseases()).append("\n");
+            if (history.getFamilyHistory() != null && !history.getFamilyHistory().isBlank())
+                sb.append("Family History: ").append(history.getFamilyHistory()).append("\n");
+            if (history.getCurrentMedications() != null && !history.getCurrentMedications().isBlank())
+                sb.append("Current Medications/Supplements: ").append(history.getCurrentMedications()).append("\n");
+            if (history.getSurgicalHistory() != null && !history.getSurgicalHistory().isBlank())
+                sb.append("Surgical History: ").append(history.getSurgicalHistory()).append("\n");
+
+            sb.append("\n## EATING HABITS\n");
+            if (history.getMealsPerDay() != null)
+                sb.append("Meals per day: ").append(history.getMealsPerDay()).append("\n");
+            if (Boolean.TRUE.equals(history.getSkipsBreakfast()))
+                sb.append("Note: Patient skips breakfast\n");
+            if (Boolean.TRUE.equals(history.getEatsLateNight()))
+                sb.append("Note: Patient eats late at night\n");
+            if (history.getFoodAllergies() != null && !history.getFoodAllergies().isBlank())
+                sb.append("Food Allergies: ").append(history.getFoodAllergies()).append("\n");
+            if (history.getFoodIntolerances() != null && !history.getFoodIntolerances().isBlank())
+                sb.append("Food Intolerances: ").append(history.getFoodIntolerances()).append("\n");
+            if (history.getFoodAversions() != null && !history.getFoodAversions().isBlank())
+                sb.append("Food Aversions/Dislikes: ").append(history.getFoodAversions()).append("\n");
+            if (history.getFoodPreferences() != null && !history.getFoodPreferences().isBlank())
+                sb.append("Food Preferences: ").append(history.getFoodPreferences()).append("\n");
+            if (history.getDietaryRestrictions() != null && !history.getDietaryRestrictions().isBlank())
+                sb.append("Dietary Restrictions: ").append(history.getDietaryRestrictions()).append("\n");
+            if (Boolean.TRUE.equals(history.getConsumesAlcohol()) && history.getAlcoholFrequency() != null)
+                sb.append("Alcohol: ").append(history.getAlcoholFrequency()).append("\n");
+            if (history.getWaterIntakeLiters() != null)
+                sb.append("Daily water intake: ").append(history.getWaterIntakeLiters() / 10.0).append(" L\n");
+
+            sb.append("\n## DIGESTIVE HEALTH\n");
+            java.util.List<String> digestive = new java.util.ArrayList<>();
+            if (Boolean.TRUE.equals(history.getHasBloating()))    digestive.add("bloating");
+            if (Boolean.TRUE.equals(history.getHasConstipation())) digestive.add("constipation");
+            if (Boolean.TRUE.equals(history.getHasDiarrhea()))     digestive.add("diarrhea");
+            if (Boolean.TRUE.equals(history.getHasAcidReflux()))   digestive.add("acid reflux/GERD");
+            if (Boolean.TRUE.equals(history.getHasIrritable()))    digestive.add("IBS");
+            if (!digestive.isEmpty())
+                sb.append("Digestive symptoms: ").append(String.join(", ", digestive)).append("\n");
+            if (history.getDigestiveNotes() != null && !history.getDigestiveNotes().isBlank())
+                sb.append("Digestive notes: ").append(history.getDigestiveNotes()).append("\n");
+
+            sb.append("\n## LIFESTYLE\n");
+            if (history.getSleepHoursPerNight() != null)
+                sb.append("Sleep: ").append(history.getSleepHoursPerNight()).append(" hours/night\n");
+            if (history.getStressLevel() != null)
+                sb.append("Stress level: ").append(history.getStressLevel()).append("\n");
+            if (Boolean.TRUE.equals(history.getSmoker()))
+                sb.append("Smoker: yes\n");
+            if (history.getOccupation() != null && !history.getOccupation().isBlank())
+                sb.append("Occupation: ").append(history.getOccupation()).append("\n");
+            if (history.getPhysicalActivityDetail() != null && !history.getPhysicalActivityDetail().isBlank())
+                sb.append("Physical Activity Detail: ").append(history.getPhysicalActivityDetail()).append("\n");
+
+            // Lab results — only include non-null values
+            boolean hasLabs = history.getFastingGlucose() != null || history.getHba1c() != null
+                || history.getTotalCholesterol() != null || history.getTriglycerides() != null
+                || history.getHemoglobin() != null || history.getVitaminD() != null;
+            if (hasLabs) {
+                sb.append("\n## RECENT LAB RESULTS\n");
+                if (history.getFastingGlucose()   != null) sb.append("Fasting Glucose: ").append(history.getFastingGlucose()).append(" mg/dL\n");
+                if (history.getHba1c()            != null) sb.append("HbA1c: ").append(history.getHba1c()).append("%\n");
+                if (history.getTotalCholesterol() != null) sb.append("Total Cholesterol: ").append(history.getTotalCholesterol()).append(" mg/dL\n");
+                if (history.getLdlCholesterol()   != null) sb.append("LDL: ").append(history.getLdlCholesterol()).append(" mg/dL\n");
+                if (history.getHdlCholesterol()   != null) sb.append("HDL: ").append(history.getHdlCholesterol()).append(" mg/dL\n");
+                if (history.getTriglycerides()    != null) sb.append("Triglycerides: ").append(history.getTriglycerides()).append(" mg/dL\n");
+                if (history.getHemoglobin()       != null) sb.append("Hemoglobin: ").append(history.getHemoglobin()).append(" g/dL\n");
+                if (history.getFerritin()         != null) sb.append("Ferritin: ").append(history.getFerritin()).append(" ng/mL\n");
+                if (history.getVitaminD()         != null) sb.append("Vitamin D: ").append(history.getVitaminD()).append(" ng/mL\n");
+                if (history.getVitaminB12()       != null) sb.append("Vitamin B12: ").append(history.getVitaminB12()).append(" pg/mL\n");
+                if (history.getOtherLabResults()  != null && !history.getOtherLabResults().isBlank())
+                    sb.append("Other: ").append(history.getOtherLabResults()).append("\n");
+            }
+
+            if (history.getWeightGoalDetail() != null && !history.getWeightGoalDetail().isBlank())
+                sb.append("\nWeight Goal Detail: ").append(history.getWeightGoalDetail()).append("\n");
+            if (history.getPreviousDietAttempts() != null && !history.getPreviousDietAttempts().isBlank())
+                sb.append("Previous Diet Attempts: ").append(history.getPreviousDietAttempts()).append("\n");
+            if (history.getNutritionistNotes() != null && !history.getNutritionistNotes().isBlank())
+                sb.append("\n## NUTRITIONIST NOTES\n").append(history.getNutritionistNotes()).append("\n");
+        }
 
         if (customInstructions != null && !customInstructions.isBlank()) {
             sb.append("\n## ADDITIONAL INSTRUCTIONS FROM NUTRITIONIST\n");

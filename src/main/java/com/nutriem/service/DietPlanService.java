@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -190,7 +192,7 @@ public class DietPlanService {
         Meal savedMeal = mealRepository.save(meal);
 
         // Save ingredients
-        List<MealFood> savedIngredients = new ArrayList<>();
+        Set<MealFood> savedIngredients = new HashSet<>();
         if (req.getIngredients() != null) {
             for (IngredientRequest ing : req.getIngredients()) {
                 MealFood mf = new MealFood();
@@ -202,6 +204,7 @@ public class DietPlanService {
                 mf.setCarbsG(ing.getCarbsG());
                 mf.setFatG(ing.getFatG());
                 mf.setFiberG(ing.getFiberG());
+                mf.setImageUrl(ing.getImageUrl());
 
                 if (ing.getFoodId() != null) {
                     // Linked to food database

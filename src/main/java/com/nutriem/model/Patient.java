@@ -44,6 +44,7 @@ public class Patient {
     private ActivityLevel activityLevel = ActivityLevel.SEDENTARY;
 
     @Column(columnDefinition = "TEXT") private String notes;
+    private String portalPassword;  // BCrypt-hashed, null = portal disabled
 
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
@@ -161,6 +162,8 @@ public class Patient {
     public void setActivityLevel(ActivityLevel v)   { this.activityLevel = v; }
     public String getNotes()                        { return notes; }
     public void setNotes(String v)                  { this.notes = v; }
+    public String getPortalPassword()               { return portalPassword; }
+    public void setPortalPassword(String v)         { this.portalPassword = v; }
     public Status getStatus()                       { return status; }
     public void setStatus(Status v)                 { this.status = v; }
     public User getNutritionistId()                 { return nutriologist; }

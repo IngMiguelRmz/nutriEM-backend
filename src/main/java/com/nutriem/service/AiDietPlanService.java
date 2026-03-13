@@ -14,32 +14,37 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class AiDietPlanService {
 
     private static final Logger log = LoggerFactory.getLogger(AiDietPlanService.class);
 
-    private final ClaudeAiService    claudeAiService;
-    private final DietPlanRepository dietPlanRepository;
-    private final MealRepository     mealRepository;
-    private final MealFoodRepository mealFoodRepository;
-    private final PatientRepository  patientRepository;
-    private final UserRepository     userRepository;
+    private final ClaudeAiService          claudeAiService;
+    private final DietPlanRepository       dietPlanRepository;
+    private final MealRepository           mealRepository;
+    private final MealFoodRepository       mealFoodRepository;
+    private final PatientRepository        patientRepository;
+    private final UserRepository           userRepository;
+    private final ClinicalHistoryRepository clinicalHistoryRepository;
 
     public AiDietPlanService(ClaudeAiService claudeAiService,
                               DietPlanRepository dietPlanRepository,
                               MealRepository mealRepository,
                               MealFoodRepository mealFoodRepository,
                               PatientRepository patientRepository,
-                              UserRepository userRepository) {
-        this.claudeAiService    = claudeAiService;
-        this.dietPlanRepository = dietPlanRepository;
-        this.mealRepository     = mealRepository;
-        this.mealFoodRepository = mealFoodRepository;
-        this.patientRepository  = patientRepository;
-        this.userRepository     = userRepository;
+                              UserRepository userRepository,
+                              ClinicalHistoryRepository clinicalHistoryRepository) {
+        this.claudeAiService           = claudeAiService;
+        this.dietPlanRepository        = dietPlanRepository;
+        this.mealRepository            = mealRepository;
+        this.mealFoodRepository        = mealFoodRepository;
+        this.patientRepository         = patientRepository;
+        this.userRepository            = userRepository;
+        this.clinicalHistoryRepository = clinicalHistoryRepository;
     }
 
     private User getCurrentUser() {
@@ -58,8 +63,11 @@ public class AiDietPlanService {
 
         log.info("Generating AI diet plan for patient: {} ({})", patient.getFullName(), patient.getId());
 
+        com.nutriem.model.ClinicalHistory history =
+                clinicalHistoryRepository.findByPatientId(patient.getId()).orElse(null);
+
         JsonNode aiResponse = claudeAiService.generateDietPlan(
-                patient, req.getDays(), req.getTargetCalories(), req.getCustomInstructions());
+                patient, history, req.getDays(), req.getTargetCalories(), req.getCustomInstructions());
 
         // Build and save plan
         DietPlan plan = new DietPlan();
@@ -114,7 +122,7 @@ public class AiDietPlanService {
 
                     // Parse and save ingredients
                     JsonNode ingredientsNode = mealNode.path("ingredients");
-                    List<MealFood> savedIngredients = new ArrayList<>();
+                    Set<MealFood> savedIngredients = new HashSet<>();
 
                     if (ingredientsNode.isArray()) {
                         for (JsonNode ing : ingredientsNode) {

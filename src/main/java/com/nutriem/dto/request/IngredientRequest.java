@@ -2,6 +2,7 @@ package com.nutriem.dto.request;
 
 public class IngredientRequest {
     private Long   foodId;           // optional — link to Food table
+    private String imageUrl;
     private String ingredientName;   // required if foodId is null
     private Double quantityGrams;
     private String servingDescription;
@@ -11,6 +12,8 @@ public class IngredientRequest {
     private Double fatG;
     private Double fiberG;
 
+    public String getImageUrl()                  { return imageUrl; }
+    public void   setImageUrl(String v)          { this.imageUrl = v; }
     public Long   getFoodId()                    { return foodId; }
     public void   setFoodId(Long v)              { this.foodId = v; }
     public String getIngredientName()            { return ingredientName; }

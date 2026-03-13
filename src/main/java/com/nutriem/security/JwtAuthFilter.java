@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,12 +23,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    private final JwtUtils jwtUtils;
-    private final UserDetailsService userDetailsService;
+    private final JwtUtils                   jwtUtils;
+    private final UserDetailsService         userDetailsService;      // nutriologist
+    private final PatientUserDetailsService  patientUserDetailsService;
 
-    public JwtAuthFilter(JwtUtils jwtUtils, UserDetailsService userDetailsService) {
-        this.jwtUtils = jwtUtils;
-        this.userDetailsService = userDetailsService;
+    public JwtAuthFilter(JwtUtils jwtUtils,
+                         @Qualifier("userDetailsServiceImpl") UserDetailsService userDetailsService,
+                         PatientUserDetailsService patientUserDetailsService) {
+        this.jwtUtils                   = jwtUtils;
+        this.userDetailsService         = userDetailsService;
+        this.patientUserDetailsService  = patientUserDetailsService;
     }
 
     @Override
@@ -41,7 +46,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 String username = jwtUtils.extractUsername(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                // Route to the correct UserDetailsService based on subject prefix
+                UserDetails userDetails = PatientUserDetailsService.isPatientSubject(username)
+                        ? patientUserDetailsService.loadUserByUsername(username)
+                        : userDetailsService.loadUserByUsername(username);
+
                 if (jwtUtils.validateToken(token, userDetails)) {
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(
